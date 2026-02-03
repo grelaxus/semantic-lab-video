@@ -190,3 +190,5 @@ If you have Figma MCP installed, you can create animations directly from your de
 'I want to create a cool animation for this UI screen. Give me some ideas.' • The AI extracts all components, colors, and layout automatically
 • It creates an implementation plan with animations
 ■ This is incredibly powerful for product demos — your Figma mockups come to life!
+
+https://www.figma.com/design/A4yq0YjdCOG2N5bck19RV4/platform-d-1?node-id=1-13657&t=mS3cjAiEjepcedjS-4
