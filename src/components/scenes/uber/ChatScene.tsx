@@ -26,16 +26,26 @@ const TypingIndicator: React.FC<{
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Spring animation for bubble appearance
-  const scale = spring({
+  // Jelly physics: desynchronized scaleX and scaleY springs
+  const scaleX = spring({
     frame: frame - delay,
     fps,
-    config: { stiffness: 300, damping: 15, mass: 0.8 },
+    config: { stiffness: 250, damping: 10 }, // Fast and stiff
   });
 
-  // Scale with overshoot (1.05) then settle to 1.0
-  const finalScale = interpolate(scale, [0, 0.95, 1], [0, 1.05, 1], {
-    extrapolateRight: "clamp",
+  const scaleY = spring({
+    frame: frame - delay,
+    fps,
+    config: { stiffness: 180, damping: 12 }, // Slightly lazier
+  });
+
+  // Rotation wobble (diving board effect)
+  const wobble = spring({
+    frame: frame - delay,
+    fps,
+    from: isSender ? 5 : -5, // Start tilted toward anchor
+    to: 0,
+    config: { stiffness: 200, damping: 8 }, // Bouncy
   });
 
   // Pulsing dots animation
@@ -77,7 +87,7 @@ const TypingIndicator: React.FC<{
       className={`absolute bottom-0 ${isSender ? "right-0" : "left-0"} flex ${isSender ? "justify-end" : "justify-start"} w-full`}
       style={{
         opacity,
-        transform: `scale(${finalScale})`,
+        transform: `scale(${scaleX}, ${scaleY}) rotate(${wobble}deg)`,
         transformOrigin: isSender ? "bottom right" : "bottom left",
         pointerEvents: "none",
         paddingLeft: isSender ? 0 : "32px",
@@ -132,16 +142,26 @@ const ChatBubble: React.FC<{
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
 
-  // Spring animation with overshoot
-  const springValue = spring({
+  // Jelly physics: desynchronized scaleX and scaleY springs for squash-and-stretch
+  const scaleX = spring({
     frame: frame - startFrame,
     fps,
-    config: { stiffness: 300, damping: 15, mass: 0.8 },
+    config: { stiffness: 250, damping: 10 }, // Fast and stiff (reacts instantly)
   });
 
-  // Scale with overshoot (1.05) then settle to 1.0
-  const scale = interpolate(springValue, [0, 0.95, 1], [0, 1.05, 1], {
-    extrapolateRight: "clamp",
+  const scaleY = spring({
+    frame: frame - startFrame,
+    fps,
+    config: { stiffness: 180, damping: 12 }, // Slightly lazier (delayed reaction)
+  });
+
+  // Rotation wobble (diving board effect) - rotates from anchor point
+  const wobble = spring({
+    frame: frame - startFrame,
+    fps,
+    from: isSender ? 5 : -5, // Start tilted toward the anchor (tail)
+    to: 0,
+    config: { stiffness: 200, damping: 8 }, // Bouncy for visible wobble
   });
 
   const opacity = frame < startFrame ? 0 : 1;
@@ -169,7 +189,7 @@ const ChatBubble: React.FC<{
       <div
         style={{
           opacity,
-          transform: `scale(${scale})`,
+          transform: `scale(${scaleX}, ${scaleY}) rotate(${wobble}deg)`,
           transformOrigin: isSender ? "bottom right" : "bottom left",
         }}
       >
