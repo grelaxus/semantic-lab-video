@@ -52,15 +52,14 @@ const ChatInputBox: React.FC<{
   typingSpeed: number;
   clickDuration: number;
   onComplete: () => void; // Called when send animation completes
-}> = ({ text, startFrame, typingSpeed, clickDuration, onComplete }) => {
+  horizontalMargin?: number; // Horizontal margin from parent
+}> = ({ text, startFrame, typingSpeed, clickDuration, onComplete, horizontalMargin = 48 }) => {
   const frame = useCurrentFrame();
 
   // Calculate phases
   const typingDuration = text.length * typingSpeed;
   const sendClickStartFrame = startFrame + typingDuration;
   const sendClickEndFrame = sendClickStartFrame + clickDuration;
-  const clearStartFrame = sendClickEndFrame;
-  const clearDuration = 3; // Frames to clear/fade input
 
   // Phase 1: Typing in input box
   const isTyping = frame >= startFrame && frame < sendClickStartFrame;
@@ -107,19 +106,13 @@ const ChatInputBox: React.FC<{
       )
     : 0;
 
-  // Phase 3: Clear input (fade out)
-  const isClearing = frame >= clearStartFrame && frame < clearStartFrame + clearDuration;
-  const clearOpacity = isClearing
-    ? interpolate(
-        frame - clearStartFrame,
-        [0, clearDuration],
-        [1, 0],
-        { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-      )
-    : 1;
+  // Input box stays visible throughout - no clearing/fading
+  // After send, it just shows empty (ready for next message)
+  const clearOpacity = 1;
 
-  // Check if we should show the input box
-  const shouldShow = frame >= startFrame && frame < clearStartFrame + clearDuration;
+  // Show input box when typing OR after send (always visible)
+  // If text is empty, always show (empty input ready for next message)
+  const shouldShow = text.length === 0 ? true : frame >= startFrame;
 
   // Call onComplete when send animation finishes
   if (frame >= sendClickEndFrame && frame < sendClickEndFrame + 1) {
@@ -129,8 +122,7 @@ const ChatInputBox: React.FC<{
   if (!shouldShow) return null;
 
   // Configurable margin from viewport edge
-  const bottomMargin = 10;
-  const horizontalMargin = 0;
+  const bottomMargin = 40;
 
   return (
     <div
@@ -356,7 +348,7 @@ const ChatBubble: React.FC<{
   return (
     <div
       className={`flex flex-col ${isSender ? "items-end" : "items-start"}`}
-      style={{ marginBottom: 24 }} // Increased spacing between bubbles (was mb-5 = 20px)
+      style={{ marginBottom: 12 }} // Spacing between bubbles (reduced from 24)
     >
       <div
         style={{
@@ -415,7 +407,7 @@ export const CopilotChatScene: React.FC<CopilotChatSceneProps> = ({
   const { fps } = useVideoConfig();
 
   // Configurable horizontal margin for the entire chat area
-  const horizontalMargin = 0; // User can adjust this
+  const horizontalMargin = 48; // Margin from left and right edges (adjustable)
 
   // Calculate actual start frames based on previous message completion + delay
   const calculateStartFrames = () => {
@@ -458,43 +450,13 @@ export const CopilotChatScene: React.FC<CopilotChatSceneProps> = ({
 
   const startFrames = calculateStartFrames();
 
-  // Find which message is currently being typed
-  const getCurrentTypingMessageIndex = () => {
-    for (let i = 0; i < chatMessages.length; i++) {
-      const message = chatMessages[i];
-      const startFrame = startFrames[i];
-
-      // For grey AI: check if showing "..." indicator
-      if (!message.isSender) {
-        const typingDuration = message.typingDuration || 20;
-        if (frame >= startFrame && frame < startFrame + typingDuration) {
-          return -1; // Showing typing indicator
-        }
-      }
-
-      // For green user: check if typing in input box OR clicking send
-      if (message.isSender) {
-        const typingSpeed = message.typingSpeed || 2;
-        const typingDuration = message.text.length * typingSpeed;
-        const clickDuration = message.clickDuration || 12;
-        const clearDuration = 3;
-        const inputEndFrame = startFrame + typingDuration + clickDuration + clearDuration;
-        if (frame >= startFrame && frame < inputEndFrame) {
-          return i; // Currently typing in input box or clicking send
-        }
-      }
-    }
-    return null;
-  };
-
-  const currentTypingIndex = getCurrentTypingMessageIndex();
-
-  // Vertical Stack Momentum: Calculate container bounce for each new message
+  // Vertical Stack Momentum: Calculate container offset for normal order (oldest at top, newest at bottom)
+  // New messages appear at bottom, pushing older messages UP (negative offset)
   const calculateContainerOffset = () => {
     if (chatMessages.length === 0) return 0;
 
-    // Estimate message height (including margin-bottom: 20px from mb-5)
-    const estimatedMessageHeight = 60; // Approximate height per message
+    // Estimate message height (including margin-bottom)
+    const estimatedMessageHeight = 72; // Approximate height per message (28px font + padding + margin)
     
     // Track which messages have appeared and when
     const messageAppearFrames: number[] = [];
@@ -516,18 +478,17 @@ export const CopilotChatScene: React.FC<CopilotChatSceneProps> = ({
       }
     }
 
-    // Sum spring bounces for all messages that have appeared
-    // Each spring animates the container up by one message height
-    // Springs naturally settle, creating cumulative upward movement
+    // Normal order: oldest at top, newest at bottom
+    // Each new message pushes existing messages UP (negative offset)
     let totalOffset = 0;
 
     for (let i = 1; i < chatMessages.length; i++) {
-      // Skip first message (i=0) as it doesn't cause bounce
+      // Skip first message (i=0) as it doesn't cause offset
       const appearFrame = messageAppearFrames[i];
       
       if (frame >= appearFrame) {
         // Calculate spring bounce for this message
-        // Each spring moves container up by estimatedMessageHeight
+        // Negative offset = push UP (to make room for new message at bottom)
         const bounceSpring = spring({
           frame: frame - appearFrame,
           fps,
@@ -540,8 +501,7 @@ export const CopilotChatScene: React.FC<CopilotChatSceneProps> = ({
           },
         });
 
-        // Accumulate: each message contributes its bounce
-        // When settled, bounceSpring = -estimatedMessageHeight
+        // Accumulate: each message pushes container up
         totalOffset += bounceSpring;
       }
     }
@@ -551,12 +511,15 @@ export const CopilotChatScene: React.FC<CopilotChatSceneProps> = ({
 
   const containerOffset = calculateContainerOffset();
 
+  // Calculate input box height to reserve space at bottom
+  const inputBoxHeight = 100; // Approximate height of input box + margin
+
   return (
     <AbsoluteFill
-      className="bg-black flex flex-col justify-end relative"
+      className="bg-black flex flex-col relative"
       style={{
         fontFamily: "system-ui, -apple-system, sans-serif",
-        padding: "80px 0 120px 0", // Removed horizontal padding, let horizontalMargin control it
+        padding: "80px 0 0 0", // Top padding only, bottom reserved for input box
       }}
     >
       <div
@@ -566,12 +529,20 @@ export const CopilotChatScene: React.FC<CopilotChatSceneProps> = ({
           margin: "0 auto",
           paddingLeft: horizontalMargin,
           paddingRight: horizontalMargin,
+          paddingBottom: inputBoxHeight, // Reserve space for input box at bottom
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "flex-start", // Start from top
+          overflow: "hidden", // Prevent overflow
         }}
       >
-        {/* Container with vertical stack momentum */}
+        {/* Container with vertical stack momentum - normal order (oldest at top, newest at bottom) */}
         <div
           style={{
-            transform: `translateY(${containerOffset}px)`,
+            display: "flex",
+            flexDirection: "column", // Normal order - first message at top, newest at bottom
+            transform: `translateY(${containerOffset}px)`, // Push up as new messages appear at bottom
           }}
         >
           {chatMessages.map((message, index) => {
@@ -632,31 +603,62 @@ export const CopilotChatScene: React.FC<CopilotChatSceneProps> = ({
           })}
         </div>
 
-        {/* Chat Input Box - shown when user is typing */}
-        {chatMessages.map((message, index) => {
-          if (!message.isSender) return null; // Only show for user messages
+        {/* Chat Input Box - always visible at bottom */}
+        {(() => {
+          // Find the current or most recent user message being typed
+          let activeInputMessage = null;
+          let activeInputIndex = -1;
 
-          const startFrame = startFrames[index];
-          const typingSpeed = message.typingSpeed || 2;
-          const clickDuration = message.clickDuration || 12;
-          const isCurrentlyTyping = currentTypingIndex === index;
+          for (let i = chatMessages.length - 1; i >= 0; i--) {
+            const message = chatMessages[i];
+            if (message.isSender) {
+              const startFrame = startFrames[i];
+              const typingSpeed = message.typingSpeed || 2;
+              const clickDuration = message.clickDuration || 12;
+              const typingDuration = message.text.length * typingSpeed;
+              const inputEndFrame = startFrame + typingDuration + clickDuration + 3;
 
-          if (!isCurrentlyTyping) return null;
+              if (frame >= startFrame && frame < inputEndFrame) {
+                activeInputMessage = message;
+                activeInputIndex = i;
+                break;
+              }
+            }
+          }
+
+          // If no active typing, show empty input box (ready for next message)
+          if (!activeInputMessage) {
+            return (
+              <ChatInputBox
+                key="input-empty"
+                text=""
+                startFrame={frame}
+                typingSpeed={2}
+                clickDuration={12}
+                horizontalMargin={horizontalMargin}
+                onComplete={() => {}}
+              />
+            );
+          }
+
+          const startFrame = startFrames[activeInputIndex];
+          const typingSpeed = activeInputMessage.typingSpeed || 2;
+          const clickDuration = activeInputMessage.clickDuration || 12;
 
           return (
             <ChatInputBox
-              key={`input-${index}`}
-              text={message.text}
+              key={`input-${activeInputIndex}`}
+              text={activeInputMessage.text}
               startFrame={startFrame}
               typingSpeed={typingSpeed}
               clickDuration={clickDuration}
+              horizontalMargin={horizontalMargin}
               onComplete={() => {
                 // This callback is called when send animation completes
-                // The message will appear in feed automatically based on timing
               }}
             />
           );
-        })}
+        })()}
       </div>
     </AbsoluteFill>
   );
