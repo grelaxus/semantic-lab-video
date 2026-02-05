@@ -404,7 +404,7 @@ export const CopilotChatScene: React.FC<CopilotChatSceneProps> = ({
   chatMessages,
 }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height } = useVideoConfig();
 
   // Configurable horizontal margin for the entire chat area
   const horizontalMargin = 48; // Margin from left and right edges (adjustable)
@@ -451,13 +451,18 @@ export const CopilotChatScene: React.FC<CopilotChatSceneProps> = ({
   const startFrames = calculateStartFrames();
 
   // Vertical Stack Momentum: Calculate container offset for normal order (oldest at top, newest at bottom)
-  // New messages appear at bottom, pushing older messages UP (negative offset)
+  // Only scroll up when messages reach close to the input box at bottom
   const calculateContainerOffset = () => {
     if (chatMessages.length === 0) return 0;
 
     // Estimate message height (including margin-bottom)
     const estimatedMessageHeight = 72; // Approximate height per message (28px font + padding + margin)
-    
+
+    // Available viewport height (minus top padding and input box space)
+    const topPadding = 80;
+    const inputBoxHeight = 100;
+    const availableHeight = height - topPadding - inputBoxHeight;
+
     // Track which messages have appeared and when
     const messageAppearFrames: number[] = [];
     for (let i = 0; i < chatMessages.length; i++) {
@@ -478,35 +483,53 @@ export const CopilotChatScene: React.FC<CopilotChatSceneProps> = ({
       }
     }
 
-    // Normal order: oldest at top, newest at bottom
-    // Each new message pushes existing messages UP (negative offset)
-    let totalOffset = 0;
-
-    for (let i = 1; i < chatMessages.length; i++) {
-      // Skip first message (i=0) as it doesn't cause offset
-      const appearFrame = messageAppearFrames[i];
-      
-      if (frame >= appearFrame) {
-        // Calculate spring bounce for this message
-        // Negative offset = push UP (to make room for new message at bottom)
-        const bounceSpring = spring({
-          frame: frame - appearFrame,
-          fps,
-          from: 0,
-          to: -estimatedMessageHeight, // Negative = move UP
-          config: {
-            stiffness: 150, // High energy
-            damping: 12, // Low friction (allows 2-3 bounces)
-            mass: 1.2, // Heavier feel, slower oscillation
-          },
-        });
-
-        // Accumulate: each message pushes container up
-        totalOffset += bounceSpring;
+    // Count how many messages are currently visible
+    let visibleMessageCount = 0;
+    for (let i = 0; i < chatMessages.length; i++) {
+      if (frame >= messageAppearFrames[i]) {
+        visibleMessageCount++;
       }
     }
 
-    return totalOffset;
+    // Calculate total height of visible messages
+    const totalMessagesHeight = visibleMessageCount * estimatedMessageHeight;
+
+    // Only scroll if messages exceed available space (with a small threshold)
+    // Threshold: start scrolling when messages are within ~100px of input box
+    const scrollThreshold = 100;
+    const shouldScroll = totalMessagesHeight > (availableHeight - scrollThreshold);
+
+    if (!shouldScroll) {
+      return 0; // No scrolling needed yet
+    }
+
+    // Calculate how much we need to scroll (overflow amount)
+    const overflow = totalMessagesHeight - (availableHeight - scrollThreshold);
+
+    // Apply spring animation for smooth scrolling
+    // Find when the last message appeared to trigger the scroll animation
+    let lastMessageAppearFrame = 0;
+    for (let i = chatMessages.length - 1; i >= 0; i--) {
+      if (frame >= messageAppearFrames[i]) {
+        lastMessageAppearFrame = messageAppearFrames[i];
+        break;
+      }
+    }
+
+    // Animate the scroll with spring physics
+    const scrollSpring = spring({
+      frame: frame - lastMessageAppearFrame,
+      fps,
+      from: 0,
+      to: -overflow, // Negative = move UP
+      config: {
+        stiffness: 150, // High energy
+        damping: 12, // Low friction (allows 2-3 bounces)
+        mass: 1.2, // Heavier feel, slower oscillation
+      },
+    });
+
+    return scrollSpring;
   };
 
   const containerOffset = calculateContainerOffset();
