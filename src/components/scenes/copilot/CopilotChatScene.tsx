@@ -35,10 +35,10 @@ const BlinkingCursor: React.FC = () => {
       style={{
         display: "inline-block",
         width: 2,
-        height: 20,
+        height: 28, // Match font size (was 20)
         backgroundColor: BRAND_GREEN,
         opacity,
-        marginLeft: 2,
+        marginLeft: 4,
         verticalAlign: "middle",
       }}
     />
@@ -128,15 +128,19 @@ const ChatInputBox: React.FC<{
 
   if (!shouldShow) return null;
 
+  // Configurable margin from viewport edge
+  const bottomMargin = 10;
+  const horizontalMargin = 0;
+
   return (
     <div
       style={{
         position: "absolute",
-        bottom: 32,
-        right: 32,
-        left: 32,
+        bottom: bottomMargin,
+        right: horizontalMargin,
+        left: horizontalMargin,
         display: "flex",
-        justifyContent: "flex-end",
+        justifyContent: "center", // Center horizontally
         opacity: clearOpacity,
         pointerEvents: "none",
       }}
@@ -148,9 +152,9 @@ const ChatInputBox: React.FC<{
           gap: 12,
           backgroundColor: "rgba(30, 41, 59, 0.9)",
           borderRadius: 12,
-          padding: "28px 36px", // Further increased height (was 24px 32px)
-          maxWidth: 1200, // Further increased length (was 900)
-          width: "90%", // Further increased length (was 80%)
+          padding: "16px 24px", // Reduced height (slimmer) - was 28px 36px
+          maxWidth: 1400, // Increased length - was 1200
+          width: "95%", // Increased length - was 90%
           border: "1px solid rgba(71, 85, 105, 0.5)",
         }}
       >
@@ -159,11 +163,12 @@ const ChatInputBox: React.FC<{
           style={{
             flex: 1,
             color: "#e2e8f0",
-            fontSize: 15,
+            fontSize: 28, // Match chat bubble font size (was 15)
             fontFamily: "system-ui, -apple-system, sans-serif",
-            minHeight: 24,
+            minHeight: 32,
             display: "flex",
             alignItems: "center",
+            lineHeight: 1.4, // Match chat bubble line height
           }}
         >
           {displayedText}
@@ -173,13 +178,13 @@ const ChatInputBox: React.FC<{
         {/* Send Button */}
         <button
           style={{
-            padding: "16px 32px", // Further increased button size (was 12px 24px)
+            padding: "12px 28px", // Adjusted for slimmer box (was 16px 32px)
             backgroundColor: BRAND_GREEN,
             border: "none",
             borderRadius: 10,
             color: "#fff",
-            fontSize: 22, // Further increased font size (was 18)
-            fontWeight: 700, // Further increased weight (was 600)
+            fontSize: 28, // Match chat bubble font size (was 22)
+            fontWeight: 400, // Match chat bubble weight (was 700)
             cursor: "pointer",
             transform: `scale(${sendButtonScale}) rotate(${sendButtonRotate}deg)`,
           }}
@@ -305,6 +310,7 @@ const ChatBubble: React.FC<{
   showRead?: boolean;
   typingSpeed?: number; // Frames per character (only for green user)
   showTypingAnimation?: boolean; // Whether to show typing animation
+  horizontalMargin?: number; // Horizontal margin for width calculation
 }> = ({
   text,
   isSender,
@@ -312,6 +318,7 @@ const ChatBubble: React.FC<{
   showRead = false,
   typingSpeed = 2,
   showTypingAnimation = false,
+  horizontalMargin = 0,
 }) => {
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
@@ -348,7 +355,8 @@ const ChatBubble: React.FC<{
 
   return (
     <div
-      className={`flex flex-col ${isSender ? "items-end" : "items-start"} mb-5`}
+      className={`flex flex-col ${isSender ? "items-end" : "items-start"}`}
+      style={{ marginBottom: 24 }} // Increased spacing between bubbles (was mb-5 = 20px)
     >
       <div
         style={{
@@ -369,7 +377,7 @@ const ChatBubble: React.FC<{
             fontWeight: 400,
             lineHeight: 1.4,
             display: "inline-block",
-            maxWidth: `${width * 0.9}px`, // 90% of canvas width - wraps only when absolutely necessary
+            maxWidth: `${width - (horizontalMargin || 0) * 2 - 64}px`, // Full width minus margins and padding
             whiteSpace: "normal", // Allow wrapping only when text exceeds maxWidth
             wordBreak: "normal",
             backgroundColor: isSender ? BRAND_GREEN : undefined,
@@ -405,6 +413,9 @@ export const CopilotChatScene: React.FC<CopilotChatSceneProps> = ({
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+
+  // Configurable horizontal margin for the entire chat area
+  const horizontalMargin = 0; // User can adjust this
 
   // Calculate actual start frames based on previous message completion + delay
   const calculateStartFrames = () => {
@@ -545,10 +556,18 @@ export const CopilotChatScene: React.FC<CopilotChatSceneProps> = ({
       className="bg-black flex flex-col justify-end relative"
       style={{
         fontFamily: "system-ui, -apple-system, sans-serif",
-        padding: "80px 32px 120px 32px",
+        padding: "80px 0 120px 0", // Removed horizontal padding, let horizontalMargin control it
       }}
     >
-      <div className="w-full max-w-2xl mx-auto relative">
+      <div
+        className="w-full relative"
+        style={{
+          maxWidth: "100%",
+          margin: "0 auto",
+          paddingLeft: horizontalMargin,
+          paddingRight: horizontalMargin,
+        }}
+      >
         {/* Container with vertical stack momentum */}
         <div
           style={{
@@ -585,6 +604,7 @@ export const CopilotChatScene: React.FC<CopilotChatSceneProps> = ({
                   showRead={message.isSender && index === chatMessages.length - 1}
                   typingSpeed={message.typingSpeed || 2}
                   showTypingAnimation={false} // No typing animation in bubble
+                  horizontalMargin={horizontalMargin}
                 />
               </div>
             );
