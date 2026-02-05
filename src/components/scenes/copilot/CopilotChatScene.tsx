@@ -22,6 +22,26 @@ interface CopilotChatSceneProps {
 // Brand green color for user (sender) bubbles
 const BRAND_GREEN = "#00C853"; // Bright, saturated green - adjust if needed
 
+// Paper airplane icon for send button
+const SendIcon: React.FC<{ size?: number }> = ({ size = 20 }) => {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ display: "block" }}
+    >
+      <path d="M22 2L11 13" />
+      <path d="M22 2l-7 20-4-9-9-4 20-7z" />
+    </svg>
+  );
+};
+
 // Blinking cursor component for input box
 const BlinkingCursor: React.FC = () => {
   const frame = useCurrentFrame();
@@ -147,7 +167,7 @@ const ChatInputBox: React.FC<{
           padding: "16px 24px", // Reduced height (slimmer) - was 28px 36px
           maxWidth: 1400, // Increased length - was 1200
           width: "95%", // Increased length - was 90%
-          border: "1px solid rgba(71, 85, 105, 0.5)",
+          border: "5px solid rgba(94, 143, 115, 0.8)", // 5px border line
         }}
       >
         {/* Input Field */}
@@ -170,18 +190,21 @@ const ChatInputBox: React.FC<{
         {/* Send Button */}
         <button
           style={{
-            padding: "12px 28px", // Adjusted for slimmer box (was 16px 32px)
+            padding: "12px", // Square button with equal padding
             backgroundColor: BRAND_GREEN,
             border: "none",
             borderRadius: 10,
             color: "#fff",
-            fontSize: 28, // Match chat bubble font size (was 22)
-            fontWeight: 400, // Match chat bubble weight (was 700)
             cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 44, // Square button
+            height: 44,
             transform: `scale(${sendButtonScale}) rotate(${sendButtonRotate}deg)`,
           }}
         >
-          Send
+          <SendIcon size={20} />
         </button>
       </div>
     </div>
