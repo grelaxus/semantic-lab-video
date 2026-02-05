@@ -539,9 +539,10 @@ export const CopilotChatScene: React.FC<CopilotChatSceneProps> = ({
 
   return (
     <AbsoluteFill
-      className="bg-black flex flex-col relative"
+      className="flex flex-col relative"
       style={{
         fontFamily: "system-ui, -apple-system, sans-serif",
+        backgroundColor: "#1A202C", // Dark bluish-grey from next sequence
         padding: "80px 0 0 0", // Top padding only, bottom reserved for input box
       }}
     >
