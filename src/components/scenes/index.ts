@@ -4,3 +4,4 @@ export { TableAnswerScene } from "./TableAnswerScene";
 export { ChartAnswerScene } from "./ChartAnswerScene";
 export { ChatInputScene } from "./ChatInputScene";
 export { UberRideFlow, uberRideFlowSchema } from "./UberRideFlow";
+export { CopilotChatScene } from "./copilot";

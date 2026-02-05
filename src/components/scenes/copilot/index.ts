@@ -1,0 +1,1 @@
+export { CopilotChatScene } from "./CopilotChatScene";

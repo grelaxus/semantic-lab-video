@@ -4,7 +4,7 @@ import { fade } from "@remotion/transitions/fade";
 import { slide } from "@remotion/transitions/slide";
 
 import {
-  HeaderScene,
+  CopilotChatScene,
   ProcessingScene,
   TableAnswerScene,
   ChartAnswerScene,
@@ -27,7 +27,8 @@ export const CopilotDemo: React.FC = () => {
   const { fps } = useVideoConfig();
 
   // Scene durations (in seconds, converted to frames)
-  const headerDuration = Math.round(fps * 4);
+  // Increased duration to show full chat animation sequence
+  const headerDuration = Math.round(fps * 8); // Increased from 4s to 8s to see full animation
   const processingDuration = Math.round(fps * 3);
   const tableDuration = Math.round(fps * 6);
   const chartDuration = Math.round(fps * 5);
@@ -38,12 +39,30 @@ export const CopilotDemo: React.FC = () => {
 
   return (
     <TransitionSeries>
-      {/* Scene 1: Header / Opening */}
+      {/* Scene 1: Chat Conversation with Brand Green Bubbles */}
       <TransitionSeries.Sequence durationInFrames={headerDuration}>
-        <HeaderScene
-          title="Business Performance Copilot"
-          subtitle="AI-powered insights for your practice"
-          userQuery="Show me total revenue by location for Q1 2024"
+        <CopilotChatScene
+          chatMessages={[
+            {
+              text: "Show me total revenue by location for Q1 2024",
+              isSender: true,
+              delay: 0,
+              typingSpeed: 2,
+              clickDuration: 20, // Frames for send button bounce animation
+            },
+            {
+              text: "Analyzing revenue data...",
+              isSender: false,
+              delay: 30,
+              typingDuration: 40,
+            },
+            {
+              text: "Q1 2024 revenue totaled $8.4M across 5 locations. Valley View leads at $2.01M (+12% YoY). Central underperformed by 8%—recommend reviewing operations.",
+              isSender: false,
+              delay: 10,
+              typingDuration: 20,
+            },
+          ]}
         />
       </TransitionSeries.Sequence>
 
